@@ -4,20 +4,13 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <sys/stat.h>
 
-#define BUF_SIZE 1024
+#define BUF_SIZE 1
 
 int has_txt_extension(const char *filename) {
     size_t len = strlen(filename);
     return len > 4 && strcmp(filename + len - 4, ".txt") == 0;
-}
-
-void write_filtered(int out_fd, const char *buf) {
-    for (int i = 0; buf[i] != '\0'; i++) {
-        if (buf[i] != ' ' && buf[i] != '\n' && buf[i] != '\r') {  // 공백, 줄바꿈 전부 제거
-            write(out_fd, &buf[i], 1);
-        }
-    }
 }
 
 int main(int argc, char *argv[]) {
@@ -49,17 +42,20 @@ int main(int argc, char *argv[]) {
     while ((entry = readdir(dir)) != NULL) {
         if (entry->d_type == DT_REG && has_txt_extension(entry->d_name)) {
             snprintf(filepath, sizeof(filepath), "%s/%s", src_dir, entry->d_name);
-            FILE *fp = fopen(filepath, "r");
-            if (!fp) {
+            int in_fd = open(filepath, O_RDONLY);
+            if (in_fd < 0) {
                 perror("입력 파일 열기 실패");
                 continue;
             }
 
-            while (fgets(buf, sizeof(buf), fp)) {
-                write_filtered(out_fd, buf);
+            ssize_t bytes;
+            while ((bytes = read(in_fd, buf, BUF_SIZE)) > 0) {
+                // 공백과 줄바꿈 문자 모두 제외
+                if (buf[0] != ' ' && buf[0] != '\n')
+                    write(out_fd, buf, bytes);
             }
 
-            fclose(fp);
+            close(in_fd);
         }
     }
 
@@ -68,5 +64,3 @@ int main(int argc, char *argv[]) {
 
     printf("병합 완료: %s\n", out_file);
     return 0;
-}
-
