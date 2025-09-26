@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <ctype.h>  // isspace 사용 위해 추가
 
 #define BUF_SIZE 1
 
@@ -50,7 +51,7 @@ int main(int argc, char *argv[]) {
 
             ssize_t bytes;
             while ((bytes = read(in_fd, buf, BUF_SIZE)) > 0) {
-                if (buf[0] != ' ')
+                if (!isspace((unsigned char)buf[0]))  // 공백, 줄바꿈 등 모두 제거
                     write(out_fd, buf, bytes);
             }
 
