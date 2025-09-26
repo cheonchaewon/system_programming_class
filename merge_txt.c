@@ -64,3 +64,4 @@ int main(int argc, char *argv[]) {
 
     printf("병합 완료: %s\n", out_file);
     return 0;
+}
