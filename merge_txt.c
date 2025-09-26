@@ -4,14 +4,20 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <dirent.h>
-#include <sys/stat.h>
-#include <ctype.h>  // isspace 사용 위해 추가
 
-#define BUF_SIZE 1
+#define BUF_SIZE 1024
 
 int has_txt_extension(const char *filename) {
     size_t len = strlen(filename);
     return len > 4 && strcmp(filename + len - 4, ".txt") == 0;
+}
+
+void write_filtered(int out_fd, const char *buf) {
+    for (int i = 0; buf[i] != '\0'; i++) {
+        if (buf[i] != ' ' && buf[i] != '\n' && buf[i] != '\r') {  // 공백, 줄바꿈 전부 제거
+            write(out_fd, &buf[i], 1);
+        }
+    }
 }
 
 int main(int argc, char *argv[]) {
@@ -43,19 +49,17 @@ int main(int argc, char *argv[]) {
     while ((entry = readdir(dir)) != NULL) {
         if (entry->d_type == DT_REG && has_txt_extension(entry->d_name)) {
             snprintf(filepath, sizeof(filepath), "%s/%s", src_dir, entry->d_name);
-            int in_fd = open(filepath, O_RDONLY);
-            if (in_fd < 0) {
+            FILE *fp = fopen(filepath, "r");
+            if (!fp) {
                 perror("입력 파일 열기 실패");
                 continue;
             }
 
-            ssize_t bytes;
-            while ((bytes = read(in_fd, buf, BUF_SIZE)) > 0) {
-                if (!isspace((unsigned char)buf[0]))  // 공백, 줄바꿈 등 모두 제거
-                    write(out_fd, buf, bytes);
+            while (fgets(buf, sizeof(buf), fp)) {
+                write_filtered(out_fd, buf);
             }
 
-            close(in_fd);
+            fclose(fp);
         }
     }
 
